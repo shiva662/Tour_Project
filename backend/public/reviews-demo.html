@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Reviews Demo - Explore India</title>
+  <style>
+    body { font-family: Arial, sans-serif; max-width: 800px; margin: 2rem auto; }
+    .place { border: 1px solid #eee; padding: 1rem; margin-bottom: 1rem; border-radius: 6px; }
+    .reviews { margin-top: 1rem; }
+    .review { border-top: 1px dashed #ddd; padding: .5rem 0; }
+    .stars { color: #f59e0b; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Reviews Demo</h1>
+  <p>This demo shows how to add and list reviews. Paste your JWT token below when testing protected actions.</p>
+
+  <label>JWT Token (paste):</label><br/>
+  <input id="token" style="width:100%" placeholder="Bearer token..." />
+
+  <h2>Fetch reviews for a place</h2>
+  <input id="placeId" placeholder="Place ID (e.g., from /api/places)" style="width:100%" />
+  <button id="load">Load Reviews</button>
+
+  <div id="placeBox"></div>
+
+  <h3>Add a review</h3>
+  <label>Rating:</label>
+  <select id="rating">
+    <option value="5">5</option>
+    <option value="4">4</option>
+    <option value="3">3</option>
+    <option value="2">2</option>
+    <option value="1">1</option>
+  </select>
+  <br/>
+  <label>Comment:</label><br/>
+  <textarea id="comment" rows="4" style="width:100%"></textarea>
+  <button id="submit">Submit Review</button>
+
+  <script>
+    const base = location.origin.replace(/:\d+$/, ':5000') + '/api';
+
+    const loadBtn = document.getElementById('load');
+    const submitBtn = document.getElementById('submit');
+
+    loadBtn.addEventListener('click', async () => {
+      const placeId = document.getElementById('placeId').value.trim();
+      if (!placeId) return alert('Enter placeId');
+      const res = await fetch(`${base}/reviews/${placeId}`);
+      const data = await res.json();
+      const placeBox = document.getElementById('placeBox');
+      placeBox.innerHTML = '';
+
+      // fetch place details to show average rating
+      const pRes = await fetch(`${base.replace('/api','')}/api/places/${placeId}`);
+      const pData = await pRes.json();
+
+      const head = document.createElement('div');
+      head.className = 'place';
+      head.innerHTML = `<strong>${pData.title || 'Place'}</strong> — Average: <span class="stars">${pData.averageRating || 0} / 5</span> (${pData.totalReviews || 0} reviews)`;
+      placeBox.appendChild(head);
+
+      const reviewsDiv = document.createElement('div');
+      reviewsDiv.className = 'reviews';
+      if (!data.reviews || data.reviews.length === 0) {
+        reviewsDiv.innerHTML = '<p>No reviews yet.</p>';
+      } else {
+        data.reviews.forEach(r => {
+          const d = document.createElement('div');
+          d.className = 'review';
+          const date = new Date(r.createdAt).toLocaleString();
+          d.innerHTML = `<div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><div><strong>${r.user?.name || 'User'}</strong> • ${date}</div><div>${r.comment}</div>`;
+          reviewsDiv.appendChild(d);
+        });
+      }
+
+      placeBox.appendChild(reviewsDiv);
+    });
+
+    submitBtn.addEventListener('click', async () => {
+      const placeId = document.getElementById('placeId').value.trim();
+      if (!placeId) return alert('Enter placeId');
+      const token = document.getElementById('token').value.trim();
+      if (!token) return alert('Paste JWT token');
+      const rating = document.getElementById('rating').value;
+      const comment = document.getElementById('comment').value.trim();
+      if (!comment) return alert('Add comment');
+
+      const res = await fetch(`${base}/reviews/${placeId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': token.startsWith('Bearer ') ? token : 'Bearer ' + token
+        },
+        body: JSON.stringify({ rating, comment })
+      });
+
+      const data = await res.json();
+      if (!res.ok) return alert('Error: ' + (data.message || JSON.stringify(data)));
+      alert('Review submitted');
+      document.getElementById('comment').value = '';
+      // reload
+      loadBtn.click();
+    });
+  </script>
+</body>
+</html>

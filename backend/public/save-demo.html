@@ -1,0 +1,51 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Save Demo - Explore India</title>
+</head>
+<body>
+  <h1>Save/Unsave Demo</h1>
+  <p>Paste your JWT token, enter a place ID, and toggle save status.</p>
+  <input id="token" placeholder="Bearer token" style="width:80%" />
+  <br/><br/>
+  <input id="placeId" placeholder="Place ID" style="width:80%" />
+  <button id="check">Check Status</button>
+  <button id="toggle">Toggle Save</button>
+  <p id="status"></p>
+
+  <script>
+    const base = location.origin.replace(/:\d+$/, ':5000') + '/api';
+    const statusEl = document.getElementById('status');
+
+    document.getElementById('check').onclick = async () => {
+      const token = document.getElementById('token').value.trim();
+      const placeId = document.getElementById('placeId').value.trim();
+      if (!token || !placeId) return alert('Token and placeId required');
+      const res = await fetch(`${base}/users/saved`, {
+        headers: { Authorization: token }
+      });
+      const data = await res.json();
+      const saved = data.savedPlaces && data.savedPlaces.find(p=>p._id===placeId);
+      statusEl.textContent = saved ? 'Saved' : 'Not saved';
+    };
+
+    document.getElementById('toggle').onclick = async () => {
+      const token = document.getElementById('token').value.trim();
+      const placeId = document.getElementById('placeId').value.trim();
+      if (!token || !placeId) return alert('Token and placeId required');
+      const res1 = await fetch(`${base}/users/saved`, {
+        headers: { Authorization: token }
+      });
+      const d1 = await res1.json();
+      const saved = d1.savedPlaces && d1.savedPlaces.find(p=>p._id===placeId);
+      if (saved) {
+        await fetch(`${base}/users/unsave/${placeId}`, { method:'DELETE', headers:{Authorization:token} });
+      } else {
+        await fetch(`${base}/users/save/${placeId}`, { method:'POST', headers:{Authorization:token} });
+      }
+      document.getElementById('check').click();
+    };
+  </script>
+</body>
+</html>
